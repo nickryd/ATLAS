@@ -19,6 +19,29 @@ The `data` folder in this repository contains several files essential for reprod
 
 - `resamples_fig2a.csv`: Summary outcome data that can be used for reproducing Figure 2a in the manuscript.
 
+##Installation Guide
+ATLAS can be installed and run on a standard computer.
+
+Before running the project, you will need to have R and RStudio installed. If you do not have them installed, please follow the links below to download and install the latest versions:
+
+- [Download R](https://cran.r-project.org/)
+- [Download RStudio](https://www.rstudio.com/products/rstudio/download/)
+
+The download and installation process for both R and RStudio typically takes between 10 to 20 minutes, depending on your internet speed and computer performance.
+
+If you have Git installed, you can clone the ATLAS repository to your local machine with the following command:
+
+```bash
+git clone https://github.com/nickryd/ATLAS.git
+```
+
+Alternatively you can:
+1. Click on the 'Code' button.
+2. Select 'Download ZIP' from the dropdown menu.
+3. Once downloaded, extract the ZIP file to your desired location.
+
+Once you are within the ATLAS folder, open the .Rproj file and open scripts/ATLAS_run.R. This file will have instructions to initialize ATLAS, with installation taking approximately 15 minutes. Instructions on how to run ATLAS, descriptions of the output, and a sample dataset for testing is provided in this file.
+
 ## Versioning and DOI
 The version of this repository is archived on Zenodo. The badge below links to the specific archived version, providing a DOI for citation purposes.
 [![DOI](https://zenodo.org/badge/726159209.svg)](https://zenodo.org/doi/10.5281/zenodo.10519785)
