@@ -11,21 +11,27 @@
 # Load packages
 # ------------------------------------------------------------------------------
 
-# Check each package and install if not present
-for(package in c("tidyverse", "tidymodels", "bestNormalize", "xgboost", "shapviz")) {
-  if (!require(package, character.only = TRUE)) {
-    install.packages(package)
-  }
+if (!requireNamespace("renv", quietly = TRUE)) {
+  install.packages("renv")
 }
 
-rm(package)
+# Package versions were set with
+#renv::init()
+
+# Use renv::restore() to install all required packages as per renv.lock
+renv::restore()
 
 # Load the packages
-library(tidyverse)
-library(tidymodels)
-library(bestNormalize)
-library(xgboost)
-library(shapviz)
+suppressPackageStartupMessages({
+  library(readr)
+  library(xgboost)
+  library(dplyr)
+  library(tidyr)
+  library(purrr)
+  library(bestNormalize)
+  library(recipes)
+  library(shapviz)
+})
 
 # ------------------------------------------------------------------------------
 # ATLAS AI Function
@@ -35,9 +41,9 @@ ATLAS <- function(samples = NULL) {
   
   #Load data
   ATLAS_models <- read_rds("data/ATLAS.RDS") 
-
-  ATLAS_models$xgboost_model_fit[[1]] <- xgboost::xgb.load("data/origin_model.xgb")
-  ATLAS_models$xgboost_model_fit[[2]] <- xgboost::xgb.load("data/lineage_model.xgb")
+  
+  ATLAS_models$xgboost_model_fit[[1]] <- xgb.load("data/origin_model.xgb")
+  ATLAS_models$xgboost_model_fit[[2]] <- xgb.load("data/lineage_model.xgb")
   
   SITE_FEATURES <- read_rds("data/SITE_FEATURES.RDS")
   LINEAGE_FEATURES <- read_rds("data/LINEAGE_FEATURES.RDS")
@@ -107,7 +113,7 @@ ATLAS <- function(samples = NULL) {
     return(df)
   }
   
-
+  
   # specify the columns you want to add (if they don't exist)
   cols_site <- c("SEX_MF", SITE_FEATURES_GENES)  
   
@@ -119,23 +125,23 @@ ATLAS <- function(samples = NULL) {
     mutate(row_id = row_number())
   
   suppressMessages(samples_site <- samples_site %>%
-    select(row_id, all_of(SITE_FEATURES_GENES)) %>%
-    group_by(row_id) %>%
-    nest() %>%
-    ungroup() %>%
-    mutate(data = map(data, ~ {
-      gene_data <- .x %>% as.numeric()
-      gene_names <- colnames(.x)
-      transformed_data <- yeojohnson(gene_data) %>%
-        pluck("x.t") %>%
-        scale() %>%
-        t()
-      colnames(transformed_data) <- gene_names
-      as_tibble(transformed_data)
-    })) %>%
-    unnest(cols = c(data)) %>%
-    inner_join(samples_site %>% select(row_id, SEX_MF)) %>%
-    dplyr::select(-row_id))
+                     select(row_id, all_of(SITE_FEATURES_GENES)) %>%
+                     group_by(row_id) %>%
+                     nest() %>%
+                     ungroup() %>%
+                     mutate(data = map(data, ~ {
+                       gene_data <- .x %>% as.numeric()
+                       gene_names <- colnames(.x)
+                       transformed_data <- yeojohnson(gene_data) %>%
+                         pluck("x.t") %>%
+                         scale() %>%
+                         t()
+                       colnames(transformed_data) <- gene_names
+                       as_tibble(transformed_data)
+                     })) %>%
+                     unnest(cols = c(data)) %>%
+                     inner_join(samples_site %>% select(row_id, SEX_MF)) %>%
+                     dplyr::select(-row_id))
   
   
   # specify the classes for the new columns
@@ -251,7 +257,7 @@ ATLAS <- function(samples = NULL) {
     bind_rows(results_list)
   }
   
-ATLAS_models %>%
+  ATLAS_models %>%
     bind_cols(tibble(data_input = list(samples, samples),
                      data_processed = list(samples_site, samples_lineage))) %>% 
     mutate(class_prob = pmap(list(data_processed, model_preprocess, xgboost_model_fit, model_levels), model_predict),
@@ -259,7 +265,7 @@ ATLAS_models %>%
            data_input = map(data_input, ~ {
              if ("SAMPLE_ID" %in% names(..1)) ..1 
              else ..1 %>% mutate(SAMPLE_ID = paste0("sample_", row_number())) %>% dplyr::select(SAMPLE_ID, everything())
-             }),
+           }),
            data_processed = pmap(list(data_input, model_preprocess, data_processed), ~ {
              bind_cols(..1 %>% dplyr::select(SAMPLE_ID), suppressWarnings(bake(..2, ..3)))
            }),

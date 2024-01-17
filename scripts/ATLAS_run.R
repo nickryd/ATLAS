@@ -11,7 +11,8 @@
 # Load packages
 # ------------------------------------------------------------------------------
 
-#Will download and load: tidyverse, tidymodels, bestNormalize, and xgboost
+#Will download and load: readr, xgboost, dplyr, tidyr, purrr, 
+  #bestNormalize, recipes, shapviz and install dependencies)
 source("functions/ATLAS.R")
 
 # ------------------------------------------------------------------------------
