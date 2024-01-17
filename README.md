@@ -19,7 +19,7 @@ The `data` folder in this repository contains several files essential for reprod
 
 - `resamples_fig2a.csv`: Summary outcome data that can be used for reproducing Figure 2a in the manuscript.
 
-##Installation Guide
+## Installation Guide
 ATLAS can be installed and run on a standard computer.
 
 Before running the project, you will need to have R and RStudio installed. If you do not have them installed, please follow the links below to download and install the latest versions:
