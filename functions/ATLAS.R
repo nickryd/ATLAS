@@ -6,7 +6,9 @@
 #                   / ____ \| |  | |____ / ____ \ ____) |
 #                 /_/    \_|_|  |______/_/    \_|_____/
 # ------------------------------------------------------------------------------
-
+#
+# Copyright 2023 University of Wisconsin, Nicholas (Nick) Rydzewski, Shuang (George) Zhao
+#
 # ------------------------------------------------------------------------------
 # Load packages
 # ------------------------------------------------------------------------------
@@ -42,8 +44,8 @@ ATLAS <- function(samples = NULL) {
   #Load data
   ATLAS_models <- read_rds("data/ATLAS.RDS") 
   
-  ATLAS_models$xgboost_model_fit[[1]] <- xgb.load("data/origin_model.xgb")
-  ATLAS_models$xgboost_model_fit[[2]] <- xgb.load("data/lineage_model.xgb")
+  ATLAS_models$xgboost_model_fit[[1]] <- xgboost::xgb.load("data/origin_model.xgb")
+  ATLAS_models$xgboost_model_fit[[2]] <- xgboost::xgb.load("data/lineage_model.xgb")
   
   SITE_FEATURES <- read_rds("data/SITE_FEATURES.RDS")
   LINEAGE_FEATURES <- read_rds("data/LINEAGE_FEATURES.RDS")
@@ -97,18 +99,25 @@ ATLAS <- function(samples = NULL) {
     }
     
     #NKX3_1 variation of gene name
-    # Function to safely rename a column if it exists
-    safe_rename <- function(df, old_name, new_name) {
-      if (old_name %in% names(df)) {
-        df <- df %>% rename(!!new_name := !!old_name)
-      }
-      return(df)
+    # Check if a column exists in a dataframe
+    column_exists <- function(df, colname) {
+      colname %in% names(df)
     }
     
-    # Using the function to rename columns
-    samples_example <- samples_example %>%
-      safe_rename("NKX3.1", "NKX3_1") %>%
-      safe_rename("NKX3-1", "NKX3_1")
+    # Define columns to be potentially RNA2validate
+    cols_to_remove <- c("NKX3.1", "NKX3-1")
+    
+    # Filter out non-existing columns from the removal list
+    cols_to_remove <- cols_to_remove[sapply(cols_to_remove, column_exists, df = df)]
+    
+    # Update RNA2validate dataframe
+    df <- df %>%
+      mutate(
+        NKX3_1 = ifelse(is.na(NKX3_1) & column_exists(., "NKX3.1"), NKX3.1, NKX3_1),
+        NKX3_1 = ifelse(is.na(NKX3_1) & column_exists(., "NKX3-1"), `NKX3-1`, NKX3_1)
+      ) %>%
+      dplyr::select(-all_of(cols_to_remove))
+    
     
     return(df)
   }
@@ -125,7 +134,7 @@ ATLAS <- function(samples = NULL) {
     mutate(row_id = row_number())
   
   suppressMessages(samples_site <- samples_site %>%
-                     select(row_id, all_of(SITE_FEATURES_GENES)) %>%
+                     dplyr::select(row_id, all_of(SITE_FEATURES_GENES)) %>%
                      group_by(row_id) %>%
                      nest() %>%
                      ungroup() %>%
@@ -140,7 +149,7 @@ ATLAS <- function(samples = NULL) {
                        as_tibble(transformed_data)
                      })) %>%
                      unnest(cols = c(data)) %>%
-                     inner_join(samples_site %>% select(row_id, SEX_MF)) %>%
+                     inner_join(samples_site %>% dplyr::select(row_id, SEX_MF)) %>%
                      dplyr::select(-row_id))
   
   
@@ -152,7 +161,7 @@ ATLAS <- function(samples = NULL) {
     mutate(row_id = row_number())
   
   samples_lineage <- samples_lineage %>%
-    select(row_id, all_of(LINEAGE_FEATURES)) %>%
+    dplyr::select(row_id, all_of(LINEAGE_FEATURES)) %>%
     group_by(row_id) %>%
     nest() %>%
     ungroup() %>%
@@ -224,9 +233,18 @@ ATLAS <- function(samples = NULL) {
   
   grab_shapley <- function(model_fit, processed_data, prediction_classes) {
     
+    processed_data_matrix <- processed_data %>% 
+      dplyr::select(-SAMPLE_ID) %>%
+      as.matrix
+    
+    # Add a row of zeros if there's only one row in the matrix to get it to work with shapviz
+    if (nrow(processed_data_matrix) == 1) {
+      zero_row <- matrix(rep(0, ncol(processed_data_matrix)), nrow = 1)
+      processed_data_matrix <- rbind(processed_data_matrix, zero_row)
+    }
+    
     shapley_data <- shapviz(model_fit, 
-                            X_pred = processed_data %>% 
-                              dplyr::select(-SAMPLE_ID) %>% as.matrix)
+                            X_pred = processed_data_matrix)
     
     names(shapley_data) <- prediction_classes
     
@@ -238,14 +256,15 @@ ATLAS <- function(samples = NULL) {
       # Process the SHAP values for each class
       processed_df <- shapley_data[[class_name]]$S %>%
         as_tibble() %>%
-        bind_cols(processed_data %>% select(SAMPLE_ID)) %>%
+        { if (nrow(processed_data) == 1) .[1, ] else . } %>% # check for if only one row in input
+        bind_cols(processed_data %>% dplyr::select(SAMPLE_ID)) %>%
         pivot_longer(cols = -SAMPLE_ID) %>%
         group_by(name) %>%
         nest() %>%
         ungroup() %>%
         mutate(sum = map_dbl(data, ~ sum(.x$value))) %>%
         filter(sum != 0) %>%
-        select(-sum) %>%
+        dplyr::select(-sum) %>%
         unnest(data) %>%
         mutate(class = class_name) %>%
         mutate(absolute_value = abs(value)) %>%
