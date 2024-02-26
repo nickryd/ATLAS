@@ -17,9 +17,9 @@ The `data` folder in this repository contains several files essential for reprod
 
 - `samples_examples_truth.RDS`: This file includes the true Cancer Site of Origin and Cancer Lineage classes for the aobve samples
 
-- `analysis_data.csv`: This comprehensive dataset contains all sample and outcome data necessary to reproduce the figures presented in the ATLAS manuscript. This is the source data that can be used to reproduce Figure 1b-c, 2b-h, 3, 4a-c, 5c-d, and 6 in the manuscript.
+- `analysis_data.csv`: This comprehensive dataset contains all sample and outcome data necessary to reproduce the figures presented in the ATLAS manuscript.
 
-- `resamples_fig2a.csv`: Summary outcome data that can be used for reproducing Figure 2a in the manuscript.
+- `Reproduce_Figures.xlsx`: This includes an Excel file with all the data that was used as input to create all the figures, with corresponding sheets for each Figure.
 
 ## Installation Guide
 ATLAS can be installed and run on a standard computer. ATLAS has been tested on the following systems:
